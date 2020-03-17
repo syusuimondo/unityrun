@@ -11,11 +11,15 @@ public class NejikoContoller : MonoBehaviour
     const float StunDuration = 0.5f;
     CharacterController controller;
     Animator animator;
+    AudioSource audio;
 
     Vector3 moveDirection = Vector3.zero;
+    Vector3 globalDirection;
     int targetLane;
     int life = DefaultLife;
+    int count = 0;
     float recoverTime = 0.0f;
+    public GameConroller gameConroller;
 
     public float gravity;
     public float speedz;
@@ -26,6 +30,10 @@ public class NejikoContoller : MonoBehaviour
     {
         return life;
     }
+    public int Count()
+    {
+        return count;
+    }
     bool IsStun()
     {
         return recoverTime > 0.0f || life <= 0;
@@ -35,15 +43,23 @@ public class NejikoContoller : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        audio = GetComponent<AudioSource>();
+        //垂直同期をオンにする。0だとオフ。
+        QualitySettings.vSyncCount = 1;
+        //フレームレートもついでに設定している。
+        Application.targetFrameRate = 60;
 
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown("left")) MoveToTopLeft();
-        if (Input.GetKeyDown("right")) MoveToTopRight();
-        if (Input.GetKeyDown("space")) Jump();
+        if (Input.GetKeyDown("left")) MoveToLeft();
+        if (Input.GetKeyDown("right")) MoveToRight();
+        if (Input.GetKeyDown("w")) Jump();
+        if (Input.GetKeyDown("a")) MoveToTopLeft(); ;
+        if (Input.GetKeyDown("d")) MoveToTopRight(); ;
+        if (Input.GetKeyDown("s")) MoveToTop();
         if (IsStun())
         {
             moveDirection.x = 0.0f;
@@ -59,7 +75,7 @@ public class NejikoContoller : MonoBehaviour
             moveDirection.x = ratiox * speedx;
             moveDirection.y -= gravity * Time.deltaTime;
 
-            Vector3 globalDirection = transform.TransformDirection(moveDirection);
+            globalDirection = transform.TransformDirection(moveDirection);
             controller.Move(globalDirection * Time.deltaTime);
 
             if (controller.isGrounded) moveDirection.y = 0;
@@ -87,6 +103,21 @@ public class NejikoContoller : MonoBehaviour
         if (IsStun()) return;
         if (controller.isGrounded && targetLane < MaxLane) targetLane = 2;
     }
+    public void MoveToTop()
+    {
+        if (count > 0)
+        {
+            gameConroller.GetScore();
+            // プレハブを取得
+            GameObject prefab = (GameObject)Resources.Load("Prefabs/jaja");
+            // プレハブからインスタンスを生成
+            Vector3 bun = this.transform.position;
+            bun.z += 3;
+            Instantiate(prefab,bun, Quaternion.identity);
+            audio.Play();
+            count--;
+        }
+    }
     public void Jump()
     {
         if (IsStun()) return;
@@ -104,6 +135,11 @@ public class NejikoContoller : MonoBehaviour
             life--;
             recoverTime = StunDuration;
             animator.SetTrigger("damage");
+            Destroy(hit.gameObject);
+        }
+        if (hit.gameObject.tag == "Item")
+        {
+            if(count < 3)count++;
             Destroy(hit.gameObject);
         }
     }
